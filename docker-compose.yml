@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  pgshard1:
+    image: pgshard:latest 
+    restart: "no"
+    environment:
+      - POSTGRES_DB=learndb
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=dbuser
+    ports:
+      - '5432:5432'
+    volumes: 
+      - pgshard1_data:/var/lib/postgresql/data
+
+  pgshard2:
+    image: pgshard:latest
+    restart: "no"
+    environment:
+      - POSTGRES_DB=learndb
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=dbuser
+    ports:
+      - '5433:5432'
+    volumes: 
+      - pgshard2_data:/var/lib/postgresql/data
+
+  pgshard3:
+    image: pgshard:latest
+    restart: "no"
+    environment:
+      - POSTGRES_DB=learndb
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=dbuser
+    ports:
+      - '5434:5432'
+    volumes: 
+      - pgshard3_data:/var/lib/postgresql/data
+
+volumes:
+  pgshard1_data:
+    driver: local
+
+  pgshard2_data:
+    driver: local
+
+  pgshard3_data:
+    driver: local
