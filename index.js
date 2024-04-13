@@ -1,7 +1,7 @@
 const express = require("express");
 const { Client } = require("pg");
 const crypto = require("crypto");
-const ConsistentHash = require("consistent-hash");
+const HashRing = require("hashring"); // Correct import
 
 const app = express();
 const clients = {
@@ -28,10 +28,14 @@ const clients = {
     })
 };
 
-const hr = new ConsistentHash();
-hr.add("5432");
-hr.add("5433");
-hr.add("5434");
+// Define an array of servers or nodes for the HashRing
+const servers = ["5432", "5433", "5434"];
+
+// Define options if needed
+const options = {};
+
+// Instantiate HashRing with the array of servers, algorithm (optional), and options (optional)
+const hr = new HashRing(servers, 'md5', options);
 
 async function connect() {
     await clients['5432'].connect();
@@ -39,20 +43,33 @@ async function connect() {
     await clients['5434'].connect();
 }
 
-app.get("/", (req, res) => {
-    res.send({ "hello": "world" });
+app.get("/:urlId", async (req, res) => {
+    const urlId = req.params.urlId;
+    const server = hr.get(urlId);
+    const result = await clients[server].query(`SELECT * FROM URL_TABLE WHERE URL_ID = $1`, [urlId]);
+    if (result.rowCount > 0) {
+        const url = result.rows[0].url;
+        res.send({
+            "urlId": urlId,
+            "url": url,
+            "server": server
+        });
+    } else {
+        res.sendStatus(404);
+    }
 });
 
-app.post("/", (req, res) => {
+app.post("/", async (req, res) => {
     const url = req.query.url;
     const hash = crypto.createHash("sha256").update(url).digest("base64");
     const urlId = hash.substr(0, 5);
     const server = hr.get(urlId);
-    res.send({ 
+    await clients[server].query("INSERT INTO URL_TABLE (URL, URL_ID) VALUES ($1,$2)", [url, urlId]);
+    res.send({
         "urlId": urlId,
         "url": url,
         "server": server
-     });
+    });
 });
 
 connect().then(() => {
